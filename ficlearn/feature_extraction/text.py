@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
 Created on Feb 2, 2013
 
@@ -68,16 +69,12 @@ class BnsTransformer(BaseEstimator, TransformerMixin):
             # convert counts or binary occurrences to floats
             X = sp.csr_matrix(X, dtype=np.float64, copy=True)
             
-        # THIS IS NOT GOOD, I SHOULD WORK WITH SPARSE MATRIX
-        X = np.matrix(X.todense(), dtype=np.float64)
-        # THIS IS NOT GOOD, I SHOULD WORK WITH SPARSE MATRIX
-        
         self.bns_scores = dict()
         for word in self.vocab:
             wordIndex = self.vocab[word]
-            words = X[:, wordIndex].view(np.ndarray)
+            words = X.tocsc()[:, wordIndex]
             
-            if not self.is_word_feature(word, verbose):
+            if False and not self.is_word_feature(word, verbose):
                 bns_score = 0
             else:
                 bns_score = self.compute_bns(words, verbose)                              
@@ -104,13 +101,9 @@ class BnsTransformer(BaseEstimator, TransformerMixin):
             # convert counts or binary occurrences to floats
             X = sp.csr_matrix(X, dtype=np.float64, copy=copy)
         
-        # THIS IS NOT GOOD, I SHOULD WORK WITH SPARSE MATRIX
-        X = np.matrix(X.todense(), dtype=np.float64)
-        # THIS IS NOT GOOD, I SHOULD WORK WITH SPARSE MATRIX
-
         for word in self.vocab:
             wordIndex = self.vocab[word]
-            words = X[:, wordIndex].view(np.ndarray)
+            words = X.tocsc()[:, wordIndex]
             words *= self.bns_scores[word]
         
         return sp.coo_matrix(X, dtype=np.float64)
@@ -130,9 +123,9 @@ class BnsTransformer(BaseEstimator, TransformerMixin):
     
     def compute_bns(self, words, verbose=False):
         """ compute the BNS score of the word of the vocabulary at the index wordIndex """
-        wordsvec = words.reshape(words.shape[0])
-        tp = np.sum(wordsvec * self.poslabels)
-        tn = np.sum(wordsvec * self.neglabels)
+        wordsvec = words.T
+        tp = wordsvec.dot(self.poslabels)
+        tn = wordsvec.dot(self.neglabels)
         
         tpr = self.bounded_value(float(tp) / self.pos, self.rate_range[0], self.rate_range[1])     
         tnr = self.bounded_value(float(tn) / self.neg, self.rate_range[0], self.rate_range[1])
